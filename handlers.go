@@ -30,9 +30,9 @@ type Mode struct {
 }
 
 type Profile struct {
-	Tag    string `json:"tag"`
-	Avatar string `json:"avatar"`
-	Level  map[string]interface{} `json:"level"`
+	Username string `json:"username"`
+	Avatar   string `json:"avatar"`
+	Level    map[string]interface{} `json:"level"`
 	Modes struct {
 		Quickplay   map[string]interface{} `json:"quickplay"`
 		Competitive map[string]interface{} `json:"competitive"`
@@ -241,9 +241,21 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Call helper method to get all matching profiles by account name (tag).
-	// NOTE: GetAccountByName will return multiple results, but since we aren't searching for a profile, the first
-	// profile is the matching profile (the platform, region, tag combo being searched for).
-	firstProfile := allAccounts[0]
+	// NOTE: GetAccountByName will return multiple results, so we need to iterate over the results to find the
+	// matching profile
+	accounts := p.GetAccountByName()
+	matchingProfile := accounts[0]
+
+	for _, account := range accounts {
+		// Construct the 'careerLink' for the player searched for
+		careerLink := "/career/" + p.Platform + "/" + p.Region + "/" + p.Tag
+
+		// If the careerLink constructed matches the careerLink of the current account, we found the matching
+		// account
+		if account.CareerLink == careerLink {
+			matchingProfile = account
+		}
+	}
 
 	d := p.GetProfileDoc()
 
@@ -253,7 +265,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	compRankMap := make(map[string]interface{})
 	levelMap := make(map[string]interface{})
 
-	tag := d.Find(".header-masthead").Text()
+	username := d.Find(".header-masthead").Text()
 	avatar, _ := d.Find(".player-portrait").Attr("src")
 
 	quickplayGamesWon, _ := d.Find("#quickplay td:contains('Games Won')").Next().Html()
@@ -307,16 +319,24 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	level := levelElm.First().Text()
 
 	levelPortrait, _ := levelElm.Attr("style")
+	// Format of the style is "background-image:url({URL})", so only take the slice with the actual URL in it.
 	levelPortrait = levelPortrait[21:109]
 
 	// TODO: Star Portrait
 
 	levelMap["displayed"] = TrimToString(level)
-	levelMap["actual"] = firstProfile.Level
-	levelMap["stars"] = int(firstProfile.Level / 100)
+	levelMap["actual"] = matchingProfile.Level
+	levelMap["stars"] = CalculateStars(matchingProfile.Level)
 	levelMap["portrait"] = levelPortrait
 
-	profile.Tag = tag
+	profile.Username = username
+
+	// If the player is on pc, their username is their BattleTag.
+	// NOTE: BattleTags are sanitized ("#" -> "-") so we need to display the de-sanitized version.
+	if p.Platform == "pc" {
+		profile.Username = strings.Replace(p.Tag, "-", "#", 1)
+	}
+
 	profile.Avatar = avatar
 	profile.Level = levelMap
 	profile.Modes.Quickplay = quickplayMap
