@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"github.com/gorilla/handlers"
+	"github.com/urfave/negroni"
 )
 
 func main() {
@@ -20,20 +21,24 @@ func main() {
 	// "Root" / "Home" route
 	router.HandleFunc("/", home).Methods(http.MethodGet)
 
-	APIRouter := router.PathPrefix("/api/").Subrouter()
+	APIRouter := router.PathPrefix("/api").Subrouter()
 	//APIRouter.Path("/patch-notes").HandlerFunc(goverwatch.PatchNoteHandler).Methods(http.MethodGet)
 	APIRouter.Path("/search/{tag}").HandlerFunc(SearchHandler).Methods(http.MethodGet)
 
-	// Any route under "/{platform}/{region}/{tag}"
 	PRTRouter := APIRouter.PathPrefix("/{platform}/{region}/{tag}").Subrouter()
-	PRTRouter.Path("/achievements").HandlerFunc(AchievementsHandler).Methods(http.MethodGet)
-	PRTRouter.Path("/profile").HandlerFunc(ProfileHandler).Methods(http.MethodGet)
+	PRTRouter.Handle("/profile", Use(http.HandlerFunc(ProfileHandler), PRTMiddleware)).Methods(http.MethodGet)
+	PRTRouter.Handle("/achievements", Use(http.HandlerFunc(AchievementsHandler), PRTMiddleware)).Methods(http.MethodGet)
 
 	// Any route under "/{platform}/{region}/{tag}/{mode}"
 	PRTMRouter := APIRouter.PathPrefix("/{platform}/{region}/{tag}/{mode}").Subrouter()
-	PRTMRouter.Path("/all-hero-stats").HandlerFunc(AllHeroStatsHandler).Methods(http.MethodGet)
-	PRTMRouter.Path("/heros-breakdown").HandlerFunc(HerosHandler).Methods(http.MethodGet)
-	PRTMRouter.Path("/hero/{name}").HandlerFunc(HeroHandler).Methods(http.MethodGet)
+	PRTMRouter.Handle("/all-hero-stats", Use(http.HandlerFunc(AllHeroStatsHandler), PRTMMiddleware)).Methods(http.MethodGet)
+	PRTMRouter.Handle("/heros-breakdown", Use(http.HandlerFunc(HerosHandler), PRTMMiddleware)).Methods(http.MethodGet)
+
+	// TODO: Hero name validation
+	PRTMRouter.Handle("/hero/{name}", Use(http.HandlerFunc(HeroHandler), PRTMMiddleware)).Methods(http.MethodGet)
+
+	n := negroni.New()
+	n.UseHandler(router)
 
 	log.Println("Listening on " + PORT)
 	log.Fatal(http.ListenAndServe(":"+PORT, handlers.CORS()(router)))

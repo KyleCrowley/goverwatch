@@ -15,7 +15,23 @@ type Player struct {
 // getPlayer returns a player object from a map of vars.
 // Used in routes that contain "/{platform}/{region}/{tag}"
 func getPlayer(vars map[string]string) *Player {
-	return &Player{vars["platform"], vars["region"], vars["tag"]}
+	return &Player{strings.ToLower(vars["platform"]), strings.ToLower(vars["region"]), vars["tag"]}
+}
+
+func (p *Player) platformIsValid() bool {
+	if !platforms[p.Platform] {
+		return false
+	}
+
+	return true
+}
+
+func (p *Player) regionIsValid() bool {
+	if !regions[p.Region] {
+		return false
+	}
+
+	return true
 }
 
 // GetProfileDoc gets the matching player's HTML document.

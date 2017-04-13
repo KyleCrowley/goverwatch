@@ -16,7 +16,7 @@ func TrimToInt(s string) int {
 }
 
 // TrimToString returns a cleaned string given a string.
-// // Various "cleaning operations" include stripping of whitespace.
+// Various "cleaning operations" include stripping of whitespace.
 func TrimToString(s string) string {
 	return string(strings.TrimSpace(s))
 }

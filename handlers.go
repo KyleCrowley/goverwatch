@@ -54,6 +54,10 @@ type HeroBreakdown struct {
 	Percentage float64 `json:"percentage"`
 }
 
+type ErrorResponse struct {
+	Errors []string `json:"errors"`
+}
+
 // GetAccountByName returns a list of matching profiles, in particular, profiles that match the given tag name.
 func (p *Player) GetAccountByName() []Account {
 	res, err := http.Get(p.formatSearchURL())
@@ -113,83 +117,6 @@ func GetStatGUIDMap(d *goquery.Document) map[string]string {
 	return statCategoryMap
 }
 
-// AchievementsHandler retrieves all achievements for the given player and returns a JSON array of all achievements.
-// This method will return all achievements, completed or not, but contains a field ("finished") to determine if the
-// player completed the achievement.
-func AchievementsHandler(w http.ResponseWriter, r *http.Request) {
-	achievements := []Achievement{}
-
-	// Get the platform, region and tag from the request URL.
-	// Pack these into a new Player for future use.
-	vars := mux.Vars(r)
-	p := getPlayer(vars)
-
-	// Find the parent achievement section, and iterate over all children (each achievement).
-	p.GetProfileDoc().Find("#achievements-section .toggle-display .media-card").Each(func(i int, s *goquery.Selection) {
-		imageURL, _ := s.ChildrenFiltered("img").Attr("src")
-		title, _ := s.ChildrenFiltered(".media-card-caption").ChildrenFiltered(".media-card-title").Html()
-		finished := s.HasClass("m-disabled")
-
-		dataTooltip, _ := s.Attr("data-tooltip")
-		description, _ := s.Parent().ChildrenFiltered("#" + dataTooltip).ChildrenFiltered("p").Html()
-
-		achievement := Achievement{
-			Title:       title,
-			Description: description,
-			ImageURL:    imageURL,
-			Finished:    finished,
-		}
-
-		achievements = append(achievements, achievement)
-	})
-
-	// Call helper function to marshal the slice to JSON.
-	MarshalAndHandleErrors(w, r, achievements)
-}
-
-// AllHeroStatsHandler retrieves the stats for all hero's combined and returns a JSON array of all stats and their
-// section name.
-func AllHeroStatsHandler(w http.ResponseWriter, r *http.Request) {
-	var stats []Stat
-
-	// Get the platform, region and tag from the request URL.
-	// Pack these into a new Player for future use.
-	vars := mux.Vars(r)
-	p := getPlayer(vars)
-
-	// Get mode from request URL.
-	mode := strings.ToLower(vars["mode"])
-
-	// Get each stat card (stat section). s will be each card.
-	p.GetProfileDoc().Find("#" + mode + " .career-stats-section div .row[data-category-id='0x02E00000FFFFFFFF'] div").Children().Each(func(i int, s *goquery.Selection) {
-		// Get the section name (i.e. "Combat", "Assists", etc).
-		sectionName := s.Find(".card-stat-block > table > thead > tr > th .stat-title").Text()
-
-		// Iterate over each row in the the table (each row of the stat section).
-		s.Find(".card-stat-block table > tbody > tr").Each(func(j int, t *goquery.Selection) {
-			statName, _ := t.ChildrenFiltered("td:nth-child(1)").Html()
-			statValue, _ := t.ChildrenFiltered("td:nth-child(2)").Html()
-
-			// A trailing 's' is added if the value of the stat is greater than 1.
-			// If there is a trailing "s", replace it with "(s)".
-			if statName[len(statName)-1:] == "s" {
-				statName = statName[:len(statName)-1] + "(s)"
-			}
-
-			stat := Stat{
-				Name:        statName,
-				Value:       statValue,
-				SectionName: sectionName,
-			}
-
-			stats = append(stats, stat)
-		})
-	})
-
-	// Call helper function to marshal the slice to JSON.
-	MarshalAndHandleErrors(w, r, stats)
-}
-
 // SearchHandler retrieves all platform, region and tag combinations for the tag supplied and returns a JSON array of
 // combinations.
 // This is useful to see if a player has multiple profiles, or even, if the player exists.
@@ -222,6 +149,40 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Call helper function to marshal the slice to JSON.
 	MarshalAndHandleErrors(w, r, profiles)
+}
+
+// AchievementsHandler retrieves all achievements for the given player and returns a JSON array of all achievements.
+// This method will return all achievements, completed or not, but contains a field ("finished") to determine if the
+// player completed the achievement.
+func AchievementsHandler(w http.ResponseWriter, r *http.Request) {
+	achievements := []Achievement{}
+
+	// Get the platform, region and tag from the request URL.
+	// Pack these into a new Player for future use.
+	vars := mux.Vars(r)
+	p := getPlayer(vars)
+
+	// Find the parent achievement section, and iterate over all children (each achievement).
+	p.GetProfileDoc().Find("#achievements-section .toggle-display .media-card").Each(func(i int, s *goquery.Selection) {
+		imageURL, _ := s.ChildrenFiltered("img").Attr("src")
+		title, _ := s.ChildrenFiltered(".media-card-caption").ChildrenFiltered(".media-card-title").Html()
+		finished := s.HasClass("m-disabled")
+
+		dataTooltip, _ := s.Attr("data-tooltip")
+		description, _ := s.Parent().ChildrenFiltered("#" + dataTooltip).ChildrenFiltered("p").Html()
+
+		achievement := Achievement{
+			Title:       title,
+			Description: description,
+			ImageURL:    imageURL,
+			Finished:    finished,
+		}
+
+		achievements = append(achievements, achievement)
+	})
+
+	// Call helper function to marshal the slice to JSON.
+	MarshalAndHandleErrors(w, r, achievements)
 }
 
 // ProfileHandler retrieves the player's profile "overview", with statistics like player level, playtime, wins, etc.
@@ -347,11 +308,9 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	MarshalAndHandleErrors(w, r, profile)
 }
 
-// HeroHandler retrieves the stats for the given hero (by name) and returns a JSON array of all of the stats and
-// their section name.
-// This method is similar to AllHeroStatsHandler, with the except that the stats shown are for the hero itself,
-// rather that a combined total.
-func HeroHandler(w http.ResponseWriter, r *http.Request) {
+// AllHeroStatsHandler retrieves the stats for all hero's combined and returns a JSON array of all stats and their
+// section name.
+func AllHeroStatsHandler(w http.ResponseWriter, r *http.Request) {
 	var stats []Stat
 
 	// Get the platform, region and tag from the request URL.
@@ -359,36 +318,18 @@ func HeroHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	p := getPlayer(vars)
 
-	// Get mode and the hero name from request URL.
+	// Get mode from request URL.
 	mode := strings.ToLower(vars["mode"])
-	heroName := strings.ToLower(vars["name"])
 
-	d := p.GetProfileDoc()
-
-	// Call helper function to get the hero hex map.
-	// The hex of the hero will be used as an id to find the matching HTML.
-	heroMap := GetHeroHexMap(d)
-
-	// Find the stat section for the matching mode.
-	row := d.Find("body > div > .profile-background > #" + mode + " > .career-stats-section > div")
-
-	// Get the hex for the hero the user supplied.
-	// TODO: Handle hero name not found
-	hex := heroMap[heroName]
-
-	// Use the hex to find the matching stat section (hero's section).
-	// Then iterate over stat card (stat section).
-	row.ChildrenFiltered(".row[data-category-id='" + hex + "']").Children().Each(func(i int, s *goquery.Selection) {
+	// Get each stat card (stat section). s will be each card.
+	p.GetProfileDoc().Find("#" + mode + " .career-stats-section div .row[data-category-id='0x02E00000FFFFFFFF'] div").Children().Each(func(i int, s *goquery.Selection) {
 		// Get the section name (i.e. "Combat", "Assists", etc).
-		sectionName := s.Find(".card-stat-block > table > thead > tr > th > .stat-title").Text()
+		sectionName := s.Find(".card-stat-block > table > thead > tr > th .stat-title").Text()
 
-		// Similar to AllHeroStatsHandler, iterate over each stat in the section's table.
+		// Iterate over each row in the the table (each row of the stat section).
 		s.Find(".card-stat-block table > tbody > tr").Each(func(j int, t *goquery.Selection) {
-			statName, _ := t.Find("td:nth-child(1)").Html()
-			statName = TrimToString(statName)
-
-			statValue, _ := t.Find("td:nth-child(2)").Html()
-			statValue = TrimToString(statValue)
+			statName, _ := t.ChildrenFiltered("td:nth-child(1)").Html()
+			statValue, _ := t.ChildrenFiltered("td:nth-child(2)").Html()
 
 			// A trailing 's' is added if the value of the stat is greater than 1.
 			// If there is a trailing "s", replace it with "(s)".
@@ -460,6 +401,69 @@ func HerosHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Call helper function to marshal the slice to JSON.
 	MarshalAndHandleErrors(w, r, statMap)
+}
+
+// HeroHandler retrieves the stats for the given hero (by name) and returns a JSON array of all of the stats and
+// their section name.
+// This method is similar to AllHeroStatsHandler, with the except that the stats shown are for the hero itself,
+// rather that a combined total.
+func HeroHandler(w http.ResponseWriter, r *http.Request) {
+	var stats []Stat
+
+	// Get the platform, region and tag from the request URL.
+	// Pack these into a new Player for future use.
+	vars := mux.Vars(r)
+	p := getPlayer(vars)
+
+	// Get mode and the hero name from request URL.
+	mode := strings.ToLower(vars["mode"])
+	heroName := strings.ToLower(vars["name"])
+
+	d := p.GetProfileDoc()
+
+	// Call helper function to get the hero hex map.
+	// The hex of the hero will be used as an id to find the matching HTML.
+	heroMap := GetHeroHexMap(d)
+
+	// Find the stat section for the matching mode.
+	row := d.Find("body > div > .profile-background > #" + mode + " > .career-stats-section > div")
+
+	// Get the hex for the hero the user supplied.
+	// TODO: Handle hero name not found
+	hex := heroMap[heroName]
+
+	// Use the hex to find the matching stat section (hero's section).
+	// Then iterate over stat card (stat section).
+	row.ChildrenFiltered(".row[data-category-id='" + hex + "']").Children().Each(func(i int, s *goquery.Selection) {
+		// Get the section name (i.e. "Combat", "Assists", etc).
+		sectionName := s.Find(".card-stat-block > table > thead > tr > th > .stat-title").Text()
+
+		// Similar to AllHeroStatsHandler, iterate over each stat in the section's table.
+		s.Find(".card-stat-block table > tbody > tr").Each(func(j int, t *goquery.Selection) {
+			statName, _ := t.Find("td:nth-child(1)").Html()
+			statName = TrimToString(statName)
+
+			statValue, _ := t.Find("td:nth-child(2)").Html()
+			statValue = TrimToString(statValue)
+
+			// A trailing 's' is added if the value of the stat is greater than 1.
+			// If there is a trailing "s", replace it with "(s)".
+			if statName[len(statName)-1:] == "s" {
+				statName = statName[:len(statName)-1] + "(s)"
+			}
+
+			stat := Stat{
+				Name:        statName,
+				Value:       statValue,
+				SectionName: sectionName,
+			}
+
+			stats = append(stats, stat)
+		})
+	})
+
+	// Call helper function to marshal the slice to JSON.
+	MarshalAndHandleErrors(w, r, stats)
 }
 
 // ErrorHandler is a generic error handler to respond to various HTTP stats codes.
