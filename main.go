@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"os"
 	"github.com/gorilla/handlers"
-	"github.com/urfave/negroni"
 )
 
 func main() {
@@ -36,9 +35,6 @@ func main() {
 
 	// TODO: Hero name validation
 	PRTMRouter.Handle("/hero/{name}", Use(http.HandlerFunc(HeroHandler), PRTMMiddleware)).Methods(http.MethodGet)
-
-	n := negroni.New()
-	n.UseHandler(router)
 
 	log.Println("Listening on " + PORT)
 	log.Fatal(http.ListenAndServe(":"+PORT, handlers.CORS()(router)))

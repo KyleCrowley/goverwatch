@@ -11,6 +11,6 @@ const ERROR_BAD_REGION = "Invalid region supplied. Must be one of the following:
 const ERROR_BAD_TAG = "Invalid tag supplied."
 const ERROR_BAD_MODE = "Invalid mode. Must be one of the following: quickplay, competitive."
 
-var platforms = map[string]bool{"pc": true, "psn": true, "xbl": true}
-var regions = map[string]bool{"us": true, "eu": true, "cn": true, "kr": true, "global": true}
-var modes = map[string]bool{"quickplay": true, "competitive": true}
+var PLATFORMS = map[string]bool{"pc": true, "psn": true, "xbl": true}
+var REGIONS = map[string]bool{"us": true, "eu": true, "cn": true, "kr": true, "global": true}
+var MODES = map[string]bool{"quickplay": true, "competitive": true}

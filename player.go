@@ -19,7 +19,7 @@ func getPlayer(vars map[string]string) *Player {
 }
 
 func (p *Player) platformIsValid() bool {
-	if !platforms[p.Platform] {
+	if !PLATFORMS[p.Platform] {
 		return false
 	}
 
@@ -27,7 +27,7 @@ func (p *Player) platformIsValid() bool {
 }
 
 func (p *Player) regionIsValid() bool {
-	if !regions[p.Region] {
+	if !REGIONS[p.Region] {
 		return false
 	}
 

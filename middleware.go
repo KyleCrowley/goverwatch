@@ -77,7 +77,7 @@ func PRTMMiddleware(h http.Handler) http.Handler {
 }
 
 func modeIsValid(mode string) bool {
-	if !modes[strings.ToLower(mode)] {
+	if !MODES[strings.ToLower(mode)] {
 		return false
 	}
 

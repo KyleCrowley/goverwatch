@@ -328,8 +328,17 @@ func AllHeroStatsHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Iterate over each row in the the table (each row of the stat section).
 		s.Find(".card-stat-block table > tbody > tr").Each(func(j int, t *goquery.Selection) {
-			statName, _ := t.ChildrenFiltered("td:nth-child(1)").Html()
-			statValue, _ := t.ChildrenFiltered("td:nth-child(2)").Html()
+			statName, _ := t.Find("td:nth-child(1)").Html()
+			statName = TrimToString(statName)
+
+			statValue, _ := t.Find("td:nth-child(2)").Html()
+			statValue = TrimToString(statValue)
+
+			// statName might match the format: "overwatch.guid.XXXX..."
+			// In this case, skip the stat.
+			if strings.HasPrefix(statName, "overwatch.guid") {
+				return
+			}
 
 			// A trailing 's' is added if the value of the stat is greater than 1.
 			// If there is a trailing "s", replace it with "(s)".
@@ -445,6 +454,12 @@ func HeroHandler(w http.ResponseWriter, r *http.Request) {
 
 			statValue, _ := t.Find("td:nth-child(2)").Html()
 			statValue = TrimToString(statValue)
+
+			// statName might match the format: "overwatch.guid.XXXX..."
+			// In this case, skip the stat.
+			if strings.HasPrefix(statName, "overwatch.guid") {
+				return
+			}
 
 			// A trailing 's' is added if the value of the stat is greater than 1.
 			// If there is a trailing "s", replace it with "(s)".
