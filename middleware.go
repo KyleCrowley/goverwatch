@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"github.com/gorilla/mux"
 	"strings"
+	"encoding/json"
 )
 
 // Use is a basic middleware chainer.
@@ -39,7 +40,7 @@ func PRTMiddleware(h http.Handler) http.Handler {
 		if len(errors) == 0 {
 			h.ServeHTTP(w, r)
 		} else {
-			MarshalAndHandleErrors(w, r, ErrorResponse{Errors: errors})
+			ReturnErrorResponse(w, r, ErrorResponse{Errors: errors})
 		}
 	})
 }
@@ -71,7 +72,7 @@ func PRTMMiddleware(h http.Handler) http.Handler {
 		if len(errors) == 0 {
 			h.ServeHTTP(w, r)
 		} else {
-			MarshalAndHandleErrors(w, r, ErrorResponse{Errors: errors})
+			ReturnErrorResponse(w, r, ErrorResponse{Errors: errors})
 		}
 	})
 }
@@ -82,4 +83,20 @@ func modeIsValid(mode string) bool {
 	}
 
 	return true
+}
+
+func ReturnErrorResponse(w http.ResponseWriter, r *http.Request, res ErrorResponse) {
+	response, err := json.Marshal(res)
+	if err != nil {
+		panic(err)
+	}
+
+	if string(response) == "null" {
+		ErrorHandler(w, r, http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusBadRequest)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(response)
 }
