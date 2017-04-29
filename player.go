@@ -19,19 +19,19 @@ func getPlayer(vars map[string]string) *Player {
 }
 
 func (p *Player) platformIsValid() bool {
-	if !PLATFORMS[p.Platform] {
-		return false
-	}
-
-	return true
+	return PLATFORMS[p.Platform]
 }
 
 func (p *Player) regionIsValid() bool {
-	if !REGIONS[p.Region] {
-		return false
-	}
+	return REGIONS[p.Region]
+}
 
-	return true
+func modeIsValid(mode string) bool {
+	return MODES[strings.ToLower(mode)]
+}
+
+func heroIsValid(hero string) bool {
+	return HEROS[strings.ToLower(hero)]
 }
 
 // GetProfileDoc gets the matching player's HTML document.

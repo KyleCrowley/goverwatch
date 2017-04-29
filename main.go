@@ -25,16 +25,16 @@ func main() {
 	APIRouter.Path("/search/{tag}").HandlerFunc(SearchHandler).Methods(http.MethodGet)
 
 	PRTRouter := APIRouter.PathPrefix("/{platform}/{region}/{tag}").Subrouter()
-	PRTRouter.Handle("/profile", Use(http.HandlerFunc(ProfileHandler), PRTMiddleware)).Methods(http.MethodGet)
-	PRTRouter.Handle("/achievements", Use(http.HandlerFunc(AchievementsHandler), PRTMiddleware)).Methods(http.MethodGet)
+	PRTRouter.Handle("/profile", Use(http.HandlerFunc(ProfileHandler), PRTMiddleware, PlayerNotFoundMiddleware)).Methods(http.MethodGet)
+	PRTRouter.Handle("/achievements", Use(http.HandlerFunc(AchievementsHandler), PRTMiddleware, PlayerNotFoundMiddleware)).Methods(http.MethodGet)
 
 	// Any route under "/{platform}/{region}/{tag}/{mode}"
 	PRTMRouter := APIRouter.PathPrefix("/{platform}/{region}/{tag}/{mode}").Subrouter()
-	PRTMRouter.Handle("/all-hero-stats", Use(http.HandlerFunc(AllHeroStatsHandler), PRTMMiddleware)).Methods(http.MethodGet)
-	PRTMRouter.Handle("/heros-breakdown", Use(http.HandlerFunc(HerosHandler), PRTMMiddleware)).Methods(http.MethodGet)
+	PRTMRouter.Handle("/all-hero-stats", Use(http.HandlerFunc(AllHeroStatsHandler), PRTMMiddleware, PlayerNotFoundMiddleware)).Methods(http.MethodGet)
+	PRTMRouter.Handle("/heros-breakdown", Use(http.HandlerFunc(HerosHandler), PRTMMiddleware, PlayerNotFoundMiddleware)).Methods(http.MethodGet)
 
 	// TODO: Hero name validation
-	PRTMRouter.Handle("/hero/{name}", Use(http.HandlerFunc(HeroHandler), PRTMMiddleware)).Methods(http.MethodGet)
+	PRTMRouter.Handle("/hero/{name}", Use(http.HandlerFunc(HeroHandler), PRTMMiddleware, PlayerNotFoundMiddleware)).Methods(http.MethodGet)
 
 	log.Println("Listening on " + PORT)
 	log.Fatal(http.ListenAndServe(":"+PORT, handlers.CORS()(router)))

@@ -54,10 +54,6 @@ type HeroBreakdown struct {
 	Percentage float64 `json:"percentage"`
 }
 
-type ErrorResponse struct {
-	Errors []string `json:"errors"`
-}
-
 // GetAccountByName returns a list of matching profiles, in particular, profiles that match the given tag name.
 func (p *Player) GetAccountByName() []Account {
 	res, err := http.Get(p.formatSearchURL())
@@ -195,18 +191,12 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 	profile := Profile{}
 
-	allAccounts := p.GetAccountByName()
-	if len(allAccounts) == 0 {
-		ErrorHandler(w, r, http.StatusNotFound)
-		return
-	}
-
 	// Call helper method to get all matching profiles by account name (tag).
+	accounts := p.GetAccountByName()
+
 	// NOTE: GetAccountByName will return multiple results, so we need to iterate over the results to find the
 	// matching profile
-	accounts := p.GetAccountByName()
 	matchingProfile := accounts[0]
-
 	for _, account := range accounts {
 		// Construct the 'careerLink' for the player searched for
 		careerLink := "/career/" + p.Platform + "/" + p.Region + "/" + p.Tag
@@ -485,7 +475,7 @@ func HeroHandler(w http.ResponseWriter, r *http.Request) {
 func ErrorHandler(w http.ResponseWriter, r *http.Request, statusCode int) {
 	w.WriteHeader(statusCode)
 	if statusCode == http.StatusNotFound {
-		w.Write([]byte(NOT_FOUND_TEXT))
+		w.Write([]byte(ERROR_NOT_FOUND))
 	}
 }
 

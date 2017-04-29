@@ -3,7 +3,13 @@ package main
 import (
 	"strconv"
 	"strings"
+	"net/http"
+	"encoding/json"
 )
+
+type ErrorResponse struct {
+	Errors []string `json:"errors"`
+}
 
 // TrimToInt returns an cleaned int given a string.
 // Various "cleaning operations" include stripping of whitespace and removal of commas.
@@ -62,4 +68,20 @@ func CalculateStars(level int) int {
 	}
 
 	return stars
+}
+
+func ReturnErrorResponse(w http.ResponseWriter, r *http.Request, statusCode int, res ErrorResponse) {
+	response, err := json.Marshal(res)
+	if err != nil {
+		panic(err)
+	}
+
+	if string(response) == "null" {
+		ErrorHandler(w, r, http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(statusCode)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(response)
 }

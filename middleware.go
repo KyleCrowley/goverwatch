@@ -3,8 +3,6 @@ package main
 import (
 	"net/http"
 	"github.com/gorilla/mux"
-	"strings"
-	"encoding/json"
 )
 
 // Use is a basic middleware chainer.
@@ -16,7 +14,7 @@ func Use(h http.Handler, middleware ...func(http.Handler) http.Handler) http.Han
 	return h
 }
 
-// PRTMiddleware is a validation middleware for making sure that the platform, region and tag are all valid.
+// PRTMiddleware is a validation middleware for ensuring that the platform, region and tag are all valid.
 // In this case, platform and region both have a limited number of possible options the caller can choose from.
 // The validation is pushed off to another function that will return a list of error strings in the event validation fails.
 func PRTMiddleware(h http.Handler) http.Handler {
@@ -40,12 +38,12 @@ func PRTMiddleware(h http.Handler) http.Handler {
 		if len(errors) == 0 {
 			h.ServeHTTP(w, r)
 		} else {
-			ReturnErrorResponse(w, r, ErrorResponse{Errors: errors})
+			ReturnErrorResponse(w, r, http.StatusBadRequest, ErrorResponse{Errors: errors})
 		}
 	})
 }
 
-// PRTMiddleware is a validation middleware for making sure that the platform, region, tag and mode are all valid.
+// PRTMiddleware is a validation middleware for ensuring that the platform, region, tag and mode are all valid.
 // NOTE: This is a copy of PRTMiddleware, with the addition of mode validation.
 func PRTMMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -72,31 +70,28 @@ func PRTMMiddleware(h http.Handler) http.Handler {
 		if len(errors) == 0 {
 			h.ServeHTTP(w, r)
 		} else {
-			ReturnErrorResponse(w, r, ErrorResponse{Errors: errors})
+			ReturnErrorResponse(w, r, http.StatusBadRequest, ErrorResponse{Errors: errors})
 		}
 	})
 }
 
-func modeIsValid(mode string) bool {
-	if !MODES[strings.ToLower(mode)] {
-		return false
-	}
+// PlayerNotFoundMiddleware is a validation middleware for ensuring that the player actually exists.
+// The platform, region and tag combination is used to create a player. A helper method is called ("GetAccountByName")
+// to check that the combination is valid (returns at least 1 matching result).
+// If the check fails, a HTTP 404 error response is sent back indicating that player does not exist.
+func PlayerNotFoundMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get the platform, region and tag from the request URL.
+		// Pack these into a new Player for future use.
+		vars := mux.Vars(r)
+		p := getPlayer(vars)
 
-	return true
-}
-
-func ReturnErrorResponse(w http.ResponseWriter, r *http.Request, res ErrorResponse) {
-	response, err := json.Marshal(res)
-	if err != nil {
-		panic(err)
-	}
-
-	if string(response) == "null" {
-		ErrorHandler(w, r, http.StatusNotFound)
-		return
-	}
-
-	w.WriteHeader(http.StatusBadRequest)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(response)
+		accounts := p.GetAccountByName()
+		if len(accounts) == 0 {
+			ReturnErrorResponse(w, r, http.StatusNotFound, ErrorResponse{Errors: []string{ERROR_PLAYER_NOT_FOUND}})
+			return
+		} else {
+			h.ServeHTTP(w, r)
+		}
+	})
 }
